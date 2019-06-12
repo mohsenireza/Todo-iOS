@@ -11,11 +11,11 @@ import UIKit
 class TodoListViewController: UITableViewController {
     
     var todos = [Todo]()
-    let todosDataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Todos.plist")
+    let todosDataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Todos.json")
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        readTodosFromPlistFile()
+        readTodosFromJsonFile()
         //print(NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true))
     }
 
@@ -34,7 +34,7 @@ class TodoListViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let selectedTodo = todos[indexPath.row]
         selectedTodo.isDone = !selectedTodo.isDone
-        self.writeTodosToPlistFile()
+        self.writeTodosToJsonFile()
         self.tableView.reloadData()
         tableView.deselectRow(at: indexPath, animated: true)
     }
@@ -49,7 +49,7 @@ class TodoListViewController: UITableViewController {
         }
         let addAction = UIAlertAction(title: "Add", style: .default) { (action) in
             self.todos.append(Todo(title: todoTextField.text!))
-            self.writeTodosToPlistFile()
+            self.writeTodosToJsonFile()
             self.tableView.reloadData()
         }
         let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
@@ -59,22 +59,22 @@ class TodoListViewController: UITableViewController {
     }
     
     // Read/write methods
-    func writeTodosToPlistFile(){
-        let plistEncoder = PropertyListEncoder()
+    func writeTodosToJsonFile(){
+        let jsonEncoder = JSONEncoder()
         do{
-            let plistData = try plistEncoder.encode(self.todos)
-            try? plistData.write(to: self.todosDataFilePath!)
+            let jsonData = try jsonEncoder.encode(self.todos)
+            try? jsonData.write(to: self.todosDataFilePath!)
         }
         catch{
             print(error)
         }
     }
     
-    func readTodosFromPlistFile(){
-        let plistDecoder = PropertyListDecoder()
+    func readTodosFromJsonFile(){
+        let jsonDecoder = JSONDecoder()
         if let todosData = try? Data(contentsOf: todosDataFilePath!) {
             do {
-                todos = try plistDecoder.decode([Todo].self, from: todosData)
+                todos = try jsonDecoder.decode([Todo].self, from: todosData)
             }
             catch{
                 print(error)
