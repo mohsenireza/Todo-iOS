@@ -10,14 +10,13 @@ import UIKit
 
 class TodoListViewController: UITableViewController {
     
-    var defaults = UserDefaults.standard
-    var todos = [String]()
+    var todos = [Todo]()
+    let todosDataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Todos.plist")
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        if let todosFromUserDefaults = defaults.array(forKey: "todos") as? [String] {
-            self.todos = todosFromUserDefaults
-        }
+        readTodosFromPlistFile()
+        //print(NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true))
     }
 
     // TableView delegate methods
@@ -26,12 +25,17 @@ class TodoListViewController: UITableViewController {
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = UITableViewCell(style: .default, reuseIdentifier: "todoCell")
-        cell.textLabel?.text = todos[indexPath.row]
+        let cell = tableView.dequeueReusableCell(withIdentifier: "todoCell", for: indexPath)
+        cell.textLabel?.text = todos[indexPath.row].title
+        cell.accessoryType = todos[indexPath.row].isDone ? .checkmark : .none
         return cell
     }
     
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let selectedTodo = todos[indexPath.row]
+        selectedTodo.isDone = !selectedTodo.isDone
+        self.writeTodosToPlistFile()
+        self.tableView.reloadData()
         tableView.deselectRow(at: indexPath, animated: true)
     }
     
@@ -44,14 +48,38 @@ class TodoListViewController: UITableViewController {
             todoTextField = textField
         }
         let addAction = UIAlertAction(title: "Add", style: .default) { (action) in
-            self.todos.append(todoTextField.text!)
-            self.defaults.set(self.todos, forKey: "todos")
+            self.todos.append(Todo(title: todoTextField.text!))
+            self.writeTodosToPlistFile()
             self.tableView.reloadData()
         }
         let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
         alert.addAction(addAction)
         alert.addAction(cancelAction)
         present(alert, animated: true, completion: nil)
+    }
+    
+    // Read/write methods
+    func writeTodosToPlistFile(){
+        let plistEncoder = PropertyListEncoder()
+        do{
+            let plistData = try plistEncoder.encode(self.todos)
+            try? plistData.write(to: self.todosDataFilePath!)
+        }
+        catch{
+            print(error)
+        }
+    }
+    
+    func readTodosFromPlistFile(){
+        let plistDecoder = PropertyListDecoder()
+        if let todosData = try? Data(contentsOf: todosDataFilePath!) {
+            do {
+                todos = try plistDecoder.decode([Todo].self, from: todosData)
+            }
+            catch{
+                print(error)
+            }
+        }
     }
     
 }
