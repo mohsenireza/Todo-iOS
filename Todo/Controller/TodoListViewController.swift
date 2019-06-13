@@ -7,15 +7,16 @@
 //
 
 import UIKit
+import CoreData
 
 class TodoListViewController: UITableViewController {
     
     var todos = [Todo]()
-    let todosDataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Todos.json")
-    
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+        
     override func viewDidLoad() {
         super.viewDidLoad()
-        readTodosFromJsonFile()
+        getTodos()
         //print(NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true))
     }
 
@@ -34,7 +35,7 @@ class TodoListViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let selectedTodo = todos[indexPath.row]
         selectedTodo.isDone = !selectedTodo.isDone
-        self.writeTodosToJsonFile()
+        self.saveContext()
         self.tableView.reloadData()
         tableView.deselectRow(at: indexPath, animated: true)
     }
@@ -48,8 +49,10 @@ class TodoListViewController: UITableViewController {
             todoTextField = textField
         }
         let addAction = UIAlertAction(title: "Add", style: .default) { (action) in
-            self.todos.append(Todo(title: todoTextField.text!))
-            self.writeTodosToJsonFile()
+            let todo = Todo(context: self.context)
+            todo.title = todoTextField.text
+            self.saveContext()
+            self.todos.append(todo)
             self.tableView.reloadData()
         }
         let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
@@ -58,27 +61,24 @@ class TodoListViewController: UITableViewController {
         present(alert, animated: true, completion: nil)
     }
     
-    // Read/write methods
-    func writeTodosToJsonFile(){
-        let jsonEncoder = JSONEncoder()
-        do{
-            let jsonData = try jsonEncoder.encode(self.todos)
-            try? jsonData.write(to: self.todosDataFilePath!)
-        }
-        catch{
-            print(error)
+    func saveContext() {
+        if context.hasChanges {
+            do {
+                try context.save()
+            }
+            catch {
+                print("Saving context error: \(error)")
+            }
         }
     }
     
-    func readTodosFromJsonFile(){
-        let jsonDecoder = JSONDecoder()
-        if let todosData = try? Data(contentsOf: todosDataFilePath!) {
-            do {
-                todos = try jsonDecoder.decode([Todo].self, from: todosData)
-            }
-            catch{
-                print(error)
-            }
+    func getTodos(){
+        let request: NSFetchRequest<Todo> = Todo.fetchRequest()
+        do {
+            todos = try context.fetch(request)
+        }
+        catch {
+            print("Fetching data error: \(error)")
         }
     }
     
