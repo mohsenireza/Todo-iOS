@@ -7,30 +7,31 @@
 //
 
 import UIKit
-import CoreData
+import RealmSwift
 
 class CategoryViewController: UITableViewController {
 
     @IBOutlet weak var searchBar: UISearchBar!
     
-    var categories = [Category]()
-    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+    var categories: Results<Category>?
+    let realm = try! Realm()
     
     override func viewDidLoad() {
         super.viewDidLoad()
         searchBar.delegate = self
         getCategories()
+        //print(realm.configuration.fileURL)
     }
 
     // MARK: - Table view data source
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return categories.count
+        return categories?.count ?? 0
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "CategoryCell", for: indexPath)
-        cell.textLabel?.text = categories[indexPath.row].title
+        cell.textLabel?.text = categories?[indexPath.row].title
         return cell
     }
     
@@ -44,31 +45,26 @@ class CategoryViewController: UITableViewController {
         if segue.identifier == "goToTodoPage" {
             let destinationViewController = segue.destination as! TodoListViewController
             if let selectedRow = tableView.indexPathForSelectedRow {
-                destinationViewController.selectedCategory = categories[selectedRow.row]
+                destinationViewController.selectedCategory = categories?[selectedRow.row]
             }
         }
     }
     
     // MARK: - Data manipulation methods
     
-    func saveContext() {
-        if context.hasChanges {
-            do {
-               try context.save()
+    func saveCategory(_ category: Category) {
+        do {
+            try realm.write {
+                realm.add(category)
             }
-            catch {
-                print("Saving context error: \(error)")
-            }
+        }
+        catch {
+            print("Saving data error: \(error)")
         }
     }
     
-    func getCategories(with request: NSFetchRequest<Category> = Category.fetchRequest()) {
-        do {
-            categories = try context.fetch(request)
-        }
-        catch {
-            print("Fetching data from context error: \(error)")
-        }
+    func getCategories() {
+        categories = realm.objects(Category.self)
         tableView.reloadData()
     }
     
@@ -82,10 +78,9 @@ class CategoryViewController: UITableViewController {
             categoryTextField = textField
         }
         let addAction = UIAlertAction(title: "Add", style: .default) { (alertAction) in
-            let category = Category(context: self.context)
-            category.title = categoryTextField.text
-            self.saveContext()
-            self.categories.append(category)
+            let category = Category()
+            category.title = categoryTextField.text!
+            self.saveCategory(category)
             self.tableView.reloadData()
         }
         let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
@@ -106,10 +101,8 @@ extension CategoryViewController: UISearchBarDelegate {
             }
         }
         else {
-            let request: NSFetchRequest<Category> = Category.fetchRequest()
-            let filterPredicate = NSPredicate(format: "title CONTAINS[cd] %@", searchText)
-            request.predicate = filterPredicate
-            getCategories(with: request)
+            categories = realm.objects(Category.self).filter(NSPredicate(format: "title CONTAINS[cd] %@", searchText))
+            tableView.reloadData()
         }
     }
     
