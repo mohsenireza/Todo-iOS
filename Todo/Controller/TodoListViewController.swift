@@ -11,11 +11,14 @@ import CoreData
 
 class TodoListViewController: UITableViewController {
     
+    @IBOutlet weak var searchBar: UISearchBar!
+    
     var todos = [Todo]()
     let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
         
     override func viewDidLoad() {
         super.viewDidLoad()
+        searchBar.delegate = self
         getTodos()
         //print(NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true))
     }
@@ -72,15 +75,33 @@ class TodoListViewController: UITableViewController {
         }
     }
     
-    func getTodos(){
-        let request: NSFetchRequest<Todo> = Todo.fetchRequest()
+    func getTodos(with request: NSFetchRequest<Todo> = Todo.fetchRequest()){
         do {
             todos = try context.fetch(request)
         }
         catch {
             print("Fetching data error: \(error)")
         }
+        tableView.reloadData()
     }
     
 }
 
+extension TodoListViewController: UISearchBarDelegate {
+
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        if searchText == "" {
+            getTodos()
+            DispatchQueue.main.async {
+                searchBar.resignFirstResponder()
+            }
+        }
+        else {
+            let request: NSFetchRequest<Todo> = Todo.fetchRequest()
+            request.predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchText)
+            //request.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
+            getTodos(with: request)
+        }
+    }
+    
+}
